@@ -217,7 +217,13 @@
       *, *::before, *::after { animation: none !important; transition: none !important; }
       .game { opacity: 1; transform: none; }
     }
-  </style>
+      #adm { position: fixed; inset: 0; z-index: 999; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.7); backdrop-filter: blur(6px); padding: 16px; }
+    #adm.open { display: flex; }
+    #adm .box { background: #12142a; border: 1px solid var(--line); border-radius: 18px; padding: 24px; width: min(360px, 100%); text-align: center; color: #fff; }
+    #adm input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0a0b17; color: #fff; font-size: 1rem; margin: 12px 0; }
+    #adm button { padding: 9px 16px; border-radius: 10px; border: 0; background: #22d3ee; color: #05060d; font-weight: 700; cursor: pointer; margin: 0 4px; }
+    #adm .big { font-size: 3rem; font-weight: 800; margin: 8px 0; }
+</style>
 </head>
 <body>
   <canvas id="bg"></canvas>
@@ -317,10 +323,17 @@
 
   <footer>
     <div class="foot">
-      <div>© <span id="year"></span> <strong>Timothée BERTRAND</strong> – Développeur</div>
+      <div><span id="secret" style="cursor:default">©</span> <span id="year"></span> <strong>Timothée BERTRAND</strong> – Développeur</div>
       <a href="https://github.com/Timothee911" target="_blank" rel="noopener">🐙 github.com/Timothee911</a>
     </div>
   </footer>
+
+
+  <div id="adm"><div class="box">
+    <h3>🔒 Admin</h3>
+    <div id="adm-login"><input id="adm-pw" type="password" placeholder="Mot de passe" autocomplete="off"><button id="adm-ok">Entrer</button><button id="adm-x">Fermer</button></div>
+    <div id="adm-stats" style="display:none"><p>Visiteurs depuis la mise en place du compteur</p><div class="big" id="adm-n">…</div><p style="opacity:.6;font-size:.85rem">1 visite = 1 navigateur (un même appareil n'est compté qu'une fois).</p><button id="adm-x2">Fermer</button></div>
+  </div></div>
 
   <script>
     const GITHUB_USER = "timothee911";
@@ -488,6 +501,30 @@
     // Ouvre directement le CV si l'adresse finit par #cv
     if (location.hash === "#cv") show("cv");
     document.getElementById("year").textContent = new Date().getFullYear();
+  
+    // ===== Compteur de visiteurs + admin caché =====
+    (function () {
+      const API = "https://api.counterapi.dev/v1/timdev-timothee911-site/visiteurs/";
+      const ADMIN_PASSWORD = "Tim-admin-15"; // change-le ici
+      const $ = id => document.getElementById(id);
+      let seen = false;
+      try { seen = localStorage.getItem("tim_counted") === "1"; } catch (e) {}
+      if (!seen) {
+        fetch(API + "up").then(r => r.json()).then(() => { try { localStorage.setItem("tim_counted", "1"); } catch (e) {} }).catch(() => {});
+      }
+      const open = () => { $("adm").classList.add("open"); $("adm-pw").focus(); };
+      const close = () => { $("adm").classList.remove("open"); $("adm-stats").style.display = "none"; $("adm-login").style.display = ""; $("adm-pw").value = ""; };
+      let clicks = 0, timer;
+      $("secret").addEventListener("click", () => { clearTimeout(timer); timer = setTimeout(() => clicks = 0, 1500); if (++clicks >= 5) { clicks = 0; open(); } });
+      if (location.hash === "#admin") open();
+      const login = () => {
+        if ($("adm-pw").value !== ADMIN_PASSWORD) { $("adm-pw").value = ""; $("adm-pw").placeholder = "Mauvais mot de passe"; return; }
+        $("adm-login").style.display = "none"; $("adm-stats").style.display = ""; $("adm-n").textContent = "…";
+        fetch(API).then(r => r.json()).then(d => { $("adm-n").textContent = d.count ?? 0; }).catch(() => { $("adm-n").textContent = "Indisponible"; });
+      };
+      $("adm-ok").onclick = login; $("adm-pw").onkeydown = e => { if (e.key === "Enter") login(); if (e.key === "Escape") close(); };
+      $("adm-x").onclick = close; $("adm-x2").onclick = close;
+    })();
   </script>
 </body>
 </html>
