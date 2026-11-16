@@ -37,11 +37,11 @@
     }
     h1, h2, h3, .logo, .tab, .btn, .stat b { font-family: "Outfit", "Inter", sans-serif; }
 
-    /* ---------- Fond animé : néon rétro ---------- */
-    body { background: linear-gradient(180deg, #05040d 0%, #120a2e 45%, #2a0b3d 62%, #07050f 100%) fixed; }
+    /* ---------- Fond animé : ville cyberpunk ---------- */
+    body { background: linear-gradient(180deg, #03030a 0%, #0b0a24 50%, #1a0b33 100%) fixed; }
     #bg { position: fixed; inset: 0; z-index: -2; width: 100%; height: 100%; pointer-events: none; }
     .vignette { position: fixed; inset: 0; z-index: -1; pointer-events: none;
-      background: radial-gradient(ellipse at 50% 60%, transparent 40%, rgba(5, 4, 13, 0.75) 100%); }
+      background: radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(3, 3, 10, 0.7) 100%); }
 
     /* ---------- En-tête ---------- */
     header {
@@ -448,77 +448,102 @@
       const t = setInterval(() => { el.textContent = ++n; if (n >= end) clearInterval(t); }, 900 / end);
     });
 
-    // ----- Fond néon rétro : étoiles, soleil couchant et grille qui défile -----
+    // ----- Fond : ville cyberpunk de nuit, aurore, étoiles filantes et lucioles -----
     const cvs = document.getElementById("bg"), ctx = cvs.getContext("2d");
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let W, H, D, stars = [], offset = 0;
+    const NEON = ["#22e4ff", "#ff3d8b", "#a66bff", "#ffd23f"];
+    let W, H, D, stars = [], layers = [], bits = [], shoot = null, tt = 0;
+    function makeCity(speed, hMin, hMax, color, lit) {
+      const items = []; let x = 0;
+      while (x < innerWidth * 2.2) {
+        const w = 30 + Math.random() * 70, h = hMin + Math.random() * (hMax - hMin);
+        const wins = [];
+        if (lit) for (let wy = 14; wy < h - 8; wy += 12) for (let wx = 7; wx < w - 7; wx += 11) if (Math.random() < 0.32) wins.push([wx, wy, NEON[(Math.random() * 4) | 0], Math.random()]);
+        items.push({ x, w, h, wins, antenna: Math.random() < 0.25 }); x += w + Math.random() * 6;
+      }
+      return { items, span: x, speed, color, lit, off: 0 };
+    }
     function resize() {
       D = devicePixelRatio || 1;
       W = cvs.width = innerWidth * D; H = cvs.height = innerHeight * D;
-      stars = Array.from({ length: Math.min(140, Math.round(innerWidth / 9)) }, () => ({
-        x: Math.random() * W, y: Math.random() * H * 0.72,
-        r: (Math.random() * 1.3 + 0.3) * D, a: Math.random(), v: Math.random() * 0.02 + 0.005
-      }));
+      stars = Array.from({ length: Math.min(160, Math.round(innerWidth / 8)) }, () => ({
+        x: Math.random() * W, y: Math.random() * H * 0.7, r: (Math.random() * 1.2 + 0.3) * D, a: Math.random() * 6, v: Math.random() * 0.02 + 0.005 }));
+      bits = Array.from({ length: 28 }, () => ({ x: Math.random() * W, y: Math.random() * H, r: (Math.random() * 2 + 1) * D, v: (Math.random() * 0.25 + 0.08) * D, c: NEON[(Math.random() * 4) | 0], p: Math.random() * 6 }));
+      layers = [makeCity(0.08, 90, 210, "#0d0a24", false), makeCity(0.18, 70, 170, "#0a0820", true), makeCity(0.34, 50, 130, "#060512", true)];
       if (calm) frame();
     }
     function frame() {
-      ctx.clearRect(0, 0, W, H);
-      const hz = H * 0.74;                       // ligne d'horizon
+      tt += 0.016; ctx.clearRect(0, 0, W, H);
+      const hz = H * 0.86;
 
-      // Étoiles qui scintillent
+      // Aurore : grands halos colorés qui ondulent
+      [["34,228,255", 0.2, 0.18], ["166,107,255", 0.55, 0.2], ["255,61,139", 0.85, 0.16]].forEach(([c, px, a], i) => {
+        const x = W * (px + Math.sin(tt * 0.25 + i * 2) * 0.08), y = H * (0.28 + Math.cos(tt * 0.2 + i) * 0.05), r = Math.max(W, H) * 0.42;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(${c}, ${a})`); g.addColorStop(1, `rgba(${c}, 0)`);
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      });
+
+      // Étoiles
       ctx.fillStyle = "#fff";
-      for (const s of stars) {
-        s.a += s.v; const al = 0.25 + Math.abs(Math.sin(s.a)) * 0.75;
-        ctx.globalAlpha = al * (1 - s.y / hz * 0.6);
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-      }
+      for (const s of stars) { s.a += s.v; ctx.globalAlpha = (0.2 + Math.abs(Math.sin(s.a)) * 0.7) * (1 - s.y / hz * 0.7); ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill(); }
       ctx.globalAlpha = 1;
 
-      // Soleil couchant à rayures
-      const R = Math.min(W, H) * 0.19, cx = W / 2, cy = hz - R * 0.15;
-      const sun = ctx.createLinearGradient(0, cy - R, 0, cy + R);
-      sun.addColorStop(0, "#ffd23f"); sun.addColorStop(0.5, "#ff6b6b"); sun.addColorStop(1, "#ff3d8b");
-      ctx.save();
-      ctx.shadowColor = "rgba(255, 61, 139, 0.8)"; ctx.shadowBlur = 80 * D;
-      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.closePath();
-      ctx.fillStyle = sun; ctx.globalAlpha = 0.5; ctx.fill();
-      ctx.restore();
-      ctx.save(); ctx.globalCompositeOperation = "destination-out";
-      for (let i = 0; i < 7; i++) {
-        const y = cy + R * 0.05 + i * R * 0.14, h = (i + 1) * R * 0.022;
-        ctx.fillRect(cx - R - 2, y, R * 2 + 4, h);
+      // Étoile filante de temps en temps
+      if (!shoot && !calm && Math.random() < 0.004) shoot = { x: Math.random() * W * 0.8, y: Math.random() * H * 0.3, l: 0 };
+      if (shoot) {
+        shoot.l += 0.03; const sx = shoot.x + shoot.l * W * 0.25, sy = shoot.y + shoot.l * H * 0.12;
+        const g = ctx.createLinearGradient(sx - 90 * D, sy - 45 * D, sx, sy); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(255,255,255,0.9)");
+        ctx.strokeStyle = g; ctx.lineWidth = 2 * D; ctx.beginPath(); ctx.moveTo(sx - 90 * D, sy - 45 * D); ctx.lineTo(sx, sy); ctx.stroke();
+        if (shoot.l > 1) shoot = null;
       }
-      ctx.fillRect(0, hz, W, H - hz);
-      ctx.restore();
 
-      // Lueur de l'horizon
-      const glow = ctx.createLinearGradient(0, hz - 60 * D, 0, hz + 30 * D);
-      glow.addColorStop(0, "rgba(255, 61, 139, 0)"); glow.addColorStop(0.7, "rgba(255, 61, 139, 0.35)"); glow.addColorStop(1, "rgba(34, 228, 255, 0)");
-      ctx.fillStyle = glow; ctx.fillRect(0, hz - 60 * D, W, 90 * D);
+      // Lune
+      const mx = W * 0.82, my = H * 0.2, mr = Math.min(W, H) * 0.06;
+      const mg = ctx.createRadialGradient(mx, my, mr * 0.4, mx, my, mr * 3); mg.addColorStop(0, "rgba(200,220,255,0.35)"); mg.addColorStop(1, "rgba(200,220,255,0)");
+      ctx.fillStyle = mg; ctx.fillRect(mx - mr * 3, my - mr * 3, mr * 6, mr * 6);
+      ctx.fillStyle = "rgba(225,235,255,0.85)"; ctx.beginPath(); ctx.arc(mx, my, mr, 0, 6.3); ctx.fill();
 
-      // Sol : grille en perspective
-      const floor = ctx.createLinearGradient(0, hz, 0, H);
-      floor.addColorStop(0, "rgba(42, 11, 61, 0.9)"); floor.addColorStop(1, "rgba(7, 5, 15, 0.95)");
-      ctx.fillStyle = floor; ctx.fillRect(0, hz, W, H - hz);
-      ctx.lineWidth = 1.2 * D;
-      // lignes horizontales qui avancent
-      for (let i = 0; i < 18; i++) {
-        const t = ((i + offset) % 18) / 18, y = hz + (H - hz) * t * t;
-        ctx.strokeStyle = `rgba(255, 61, 139, ${0.08 + t * 0.45})`;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      // Brume derrière la ville
+      const haze = ctx.createLinearGradient(0, hz - H * 0.3, 0, hz);
+      haze.addColorStop(0, "rgba(255,61,139,0)"); haze.addColorStop(1, "rgba(255,61,139,0.22)");
+      ctx.fillStyle = haze; ctx.fillRect(0, hz - H * 0.3, W, H * 0.3);
+
+      // Trois plans de gratte-ciel qui défilent doucement (parallaxe)
+      for (const L of layers) {
+        if (!calm) L.off = (L.off + L.speed) % L.span;
+        for (const b of L.items) {
+          for (const shift of [0, L.span]) {
+            const x = (b.x - L.off + shift) * D; const x2 = x < -b.w * D ? x + L.span * D : x;
+            if (x2 > W || x2 + b.w * D < 0) continue;
+            ctx.fillStyle = L.color; ctx.fillRect(x2, hz - b.h * D, b.w * D, b.h * D + 2);
+            if (b.antenna) { ctx.fillRect(x2 + b.w * D / 2 - D, hz - b.h * D - 22 * D, 2 * D, 22 * D); }
+            if (L.lit) for (const w of b.wins) { ctx.globalAlpha = 0.35 + 0.5 * Math.abs(Math.sin(tt * 0.6 + w[3] * 9)); ctx.fillStyle = w[2]; ctx.fillRect(x2 + w[0] * D, hz - b.h * D + w[1] * D, 3 * D, 4 * D); }
+            ctx.globalAlpha = 1;
+          }
+        }
       }
-      // lignes qui partent vers l'horizon
-      for (let i = -14; i <= 14; i++) {
-        ctx.strokeStyle = "rgba(34, 228, 255, 0.28)";
-        ctx.beginPath(); ctx.moveTo(cx + i * W * 0.012, hz); ctx.lineTo(cx + i * W * 0.16, H); ctx.stroke();
-      }
-      // trait lumineux de l'horizon
-      ctx.strokeStyle = "rgba(34, 228, 255, 0.9)"; ctx.lineWidth = 2 * D;
-      ctx.shadowColor = "#22e4ff"; ctx.shadowBlur = 18 * D;
-      ctx.beginPath(); ctx.moveTo(0, hz); ctx.lineTo(W, hz); ctx.stroke();
-      ctx.shadowBlur = 0;
+      // Rue avec reflet néon
+      const st = ctx.createLinearGradient(0, hz, 0, H); st.addColorStop(0, "rgba(34,228,255,0.18)"); st.addColorStop(0.15, "rgba(10,8,32,0.9)"); st.addColorStop(1, "rgba(5,4,13,1)");
+      ctx.fillStyle = st; ctx.fillRect(0, hz, W, H - hz);
+      ctx.strokeStyle = "rgba(34,228,255,0.9)"; ctx.lineWidth = 2 * D; ctx.shadowColor = "#22e4ff"; ctx.shadowBlur = 16 * D;
+      ctx.beginPath(); ctx.moveTo(0, hz + 1); ctx.lineTo(W, hz + 1); ctx.stroke(); ctx.shadowBlur = 0;
 
-      if (!calm) { offset = (offset + 0.04) % 18; requestAnimationFrame(frame); }
+      // Traînées de lumière de voitures sur la rue
+      for (let i = 0; i < 3; i++) {
+        const dir = i % 2 ? -1 : 1, p = ((tt * (0.12 + i * 0.05) * dir + i * 0.37) % 1 + 1) % 1, x = p * (W + 300 * D) - 150 * D, y = hz + (H - hz) * (0.12 + i * 0.1);
+        const g = ctx.createLinearGradient(x - dir * 140 * D, y, x, y); g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(1, i % 2 ? "rgba(255,61,139,0.9)" : "rgba(255,230,160,0.9)");
+        ctx.strokeStyle = g; ctx.lineWidth = 3 * D; ctx.beginPath(); ctx.moveTo(x - dir * 140 * D, y); ctx.lineTo(x, y); ctx.stroke();
+      }
+
+      // Lucioles néon qui montent
+      for (const p of bits) {
+        if (!calm) { p.y -= p.v; p.x += Math.sin(tt + p.p) * 0.3 * D; if (p.y < -10) { p.y = H + 10; p.x = Math.random() * W; } }
+        ctx.globalAlpha = 0.25 + 0.4 * Math.abs(Math.sin(tt + p.p)); ctx.fillStyle = p.c; ctx.shadowColor = p.c; ctx.shadowBlur = 10 * D;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.3); ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      if (!calm) requestAnimationFrame(frame);
     }
     addEventListener("resize", resize); resize();
     if (!calm) frame();
