@@ -603,6 +603,8 @@
       let clicks = 0, timer;
       $("secret").addEventListener("click", () => { clearTimeout(timer); timer = setTimeout(() => clicks = 0, 1500); if (++clicks >= 5) { clicks = 0; open(); } });
       if (location.hash === "#admin") open();
+      // Si on change juste la fin de l'adresse (#admin) sans recharger la page, on ouvre aussi l'admin
+      addEventListener("hashchange", () => { if (location.hash === "#admin") open(); });
       $("a-back").onclick = leave; $("a-quit").onclick = leave;
       const login = () => {
         if ($("a-pw").value !== ADMIN_PASSWORD) { $("a-pw").value = ""; $("a-pw").placeholder = "Mauvais mot de passe"; return; }
