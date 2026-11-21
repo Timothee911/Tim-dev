@@ -218,7 +218,7 @@
       .game { opacity: 1; transform: none; }
     }
       #admin h2 { font-family: 'Outfit', sans-serif; font-size: 2rem; margin-bottom: 6px; }
-    .a-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 18px 0; }
+    .a-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 44%), 1fr)); gap: 14px; margin: 18px 0; }
     .a-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
     .a-card .n { font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 800; line-height: 1.1; }
     .a-card .l { color: var(--muted); font-size: .85rem; margin-top: 4px; }
@@ -339,7 +339,7 @@
         </div>
         <div id="a-dash" style="display:none">
           <h2>📊 Tableau de bord</h2>
-          <p style="color:var(--muted)">Statistiques de ton site, depuis la mise en place du compteur. <button class="ab" id="a-refresh">↻ Actualiser</button> <button class="ab" id="a-quit">Quitter</button></p>
+          <p style="color:var(--muted)">Statistiques de ton site, depuis la mise en place du compteur. <button class="ab" id="a-refresh">↻ Actualiser</button> <span id="a-status" style="font-size:.85rem"></span> <button class="ab" id="a-quit">Quitter</button></p>
           <div class="a-grid" id="a-kpi"></div>
           <div class="a-sec"><h3>Visiteurs des 7 derniers jours</h3><div class="a-bars" id="a-days"></div></div>
           <div class="a-sec"><h3>Par jeu</h3><div class="a-wrap"><table class="a-table" id="a-games"></table></div></div>
@@ -555,19 +555,39 @@
 
     // ===== Compteur de visiteurs + page admin cachée =====
     (function () {
-      const API = "https://api.counterapi.dev/v1/timdev-timothee911-site/";
+      const NS = "timdev-timothee911-site";
       const ADMIN_PASSWORD = "Tim-admin-15"; // change-le ici
       const $ = id => document.getElementById(id);
       const day = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
-      const up = k => fetch(API + k + "/up").catch(() => {});
-      const get = k => fetch(API + k + "/").then(r => r.ok ? r.json() : { count: 0 }).then(d => d.count || 0).catch(() => null);
+      // Deux services de comptage gratuits utilisés en parallèle : si l'un tombe en panne, l'autre prend le relais.
+      const PROVIDERS = [
+        { name: "abacus", up: k => `https://abacus.jasoncameron.dev/hit/${NS}/${k}`, get: k => `https://abacus.jasoncameron.dev/get/${NS}/${k}`, val: d => d.value },
+        { name: "counterapi", up: k => `https://api.counterapi.dev/v1/${NS}/${k}/up`, get: k => `https://api.counterapi.dev/v1/${NS}/${k}/`, val: d => d.count }
+      ];
+      const timeout = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
+      // Ajoute 1 sur tous les services ; renvoie true si au moins un a répondu
+      const up = k => Promise.all(PROVIDERS.map(p => fetch(p.up(k), { signal: timeout(8000) }).then(r => r.ok).catch(() => false))).then(r => r.some(Boolean));
+      let lastErr = {};
+      // Lit une valeur : essaie chaque service (404 = pas encore de visite = 0) ; null si aucun ne répond
+      const get = async k => {
+        for (const p of PROVIDERS) {
+          try {
+            const r = await fetch(p.get(k), { signal: timeout(8000) });
+            if (r.status === 404 || r.status === 400) { lastErr[p.name] = null; return 0; }
+            if (!r.ok) { lastErr[p.name] = "erreur " + r.status; continue; }
+            const v = p.val(await r.json()); lastErr[p.name] = null;
+            return Number(v) || 0;
+          } catch (e) { lastErr[p.name] = "injoignable"; }
+        }
+        return null;
+      };
       const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 
       // Comptage d'un visiteur (une seule fois par navigateur)
       let seen = false;
-      try { seen = localStorage.getItem("tim_counted") === "1"; } catch (e) {}
+      try { seen = localStorage.getItem("tim_counted2") === "1"; } catch (e) {}
       if (!seen) {
-        Promise.all([up("visiteurs"), up("jour-" + day(new Date())), up(mobile ? "mobile" : "ordinateur")]).then(() => { try { localStorage.setItem("tim_counted", "1"); } catch (e) {} });
+        Promise.all([up("visiteurs"), up("jour-" + day(new Date())), up(mobile ? "mobile" : "ordinateur")]).then(r => { if (r[0]) { try { localStorage.setItem("tim_counted2", "1"); } catch (e) {} } });
       }
       // Clics sur Jouer / Code, et vues du CV
       document.addEventListener("click", e => {
@@ -596,15 +616,19 @@
       async function load() {
         $("a-kpi").innerHTML = card("…", "Chargement"); 
         const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d; });
+        lastErr = {};
         const [total, mob, pc, cv, ...dayN] = await Promise.all([get("visiteurs"), get("mobile"), get("ordinateur"), get("vues-cv"), ...days.map(d => get("jour-" + day(d)))]);
-        const week = dayN.reduce((a, b) => a + (b || 0), 0);
+        const down = total === null;
+        $("a-status").innerHTML = down ? "🔴 Compteur injoignable (" + PROVIDERS.map(p => p.name + " : " + (lastErr[p.name] || "ok")).join(", ") + "). Vérifie ta connexion ou un bloqueur de pub, puis actualise."
+          : "🟢 Compteur connecté" + (PROVIDERS.some(p => lastErr[p.name]) ? " (un service de secours est en panne)" : "");
+        const week = down ? null : dayN.reduce((a, b) => a + (b || 0), 0);
         const today = dayN[6];
         const rows = await Promise.all(jeux.map(async j => {
           const [pl, co, gh] = await Promise.all([get("jouer-" + j.lien.toLowerCase()), get("code-" + j.lien.toLowerCase()),
             fetch("https://api.github.com/repos/Timothee911/" + j.lien).then(r => r.ok ? r.json() : null).catch(() => null)]);
           return { j, pl, co, gh };
         }));
-        const plays = rows.reduce((a, r) => a + (r.pl || 0), 0);
+        const plays = down ? null : rows.reduce((a, r) => a + (r.pl || 0), 0);
         const best = rows.slice().sort((a, b) => (b.pl || 0) - (a.pl || 0))[0];
         const pct = total ? Math.round(100 * (mob || 0) / total) : 0;
         $("a-kpi").innerHTML = card(total, "Visiteurs au total") + card(today, "Aujourd'hui") + card(week, "7 derniers jours")
