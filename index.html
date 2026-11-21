@@ -339,12 +339,12 @@
         </div>
         <div id="a-dash" style="display:none">
           <h2>📊 Tableau de bord</h2>
-          <p style="color:var(--muted)">Statistiques de ton site, depuis la mise en place du compteur. <button class="ab" id="a-refresh">↻ Actualiser</button> <span id="a-status" style="font-size:.85rem"></span> <button class="ab" id="a-quit">Quitter</button></p>
+          <p style="color:var(--muted)">Statistiques de ton site. <button class="ab" id="a-refresh">↻ Actualiser</button> <span id="a-status" style="font-size:.85rem"></span> <button class="ab" id="a-quit">Quitter</button></p>
           <div class="a-grid" id="a-kpi"></div>
           <div class="a-sec"><h3>Visiteurs des 7 derniers jours</h3><div class="a-bars" id="a-days"></div></div>
           <div class="a-sec"><h3>Par jeu</h3><div class="a-wrap"><table class="a-table" id="a-games"></table></div></div>
           <div class="a-sec"><h3>Ton navigateur (cette visite)</h3><div class="a-grid" id="a-me"></div></div>
-          <p style="color:var(--muted);font-size:.8rem;margin-top:20px">Un visiteur = un navigateur, compté une seule fois. Les clics « Jouer » et « Code » sont comptés à chaque clic.</p>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:20px">Les visites sont comptées par GoatCounter (sans cookie). Les clics « Jouer » et « Code » apparaissent dans ses événements.</p>
         </div>
       </div>
     </section>
@@ -553,49 +553,29 @@
     document.getElementById("year").textContent = new Date().getFullYear();
   
 
-    // ===== Compteur de visiteurs + page admin cachée =====
+    // ===== Statistiques (GoatCounter) + page admin cachée =====
     (function () {
-      const NS = "timdev-timothee911-site";
+      // Code GoatCounter : ton compte gratuit sur goatcounter.com (l'adresse est CODE.goatcounter.com)
+      const GC_CODE = "";
       const ADMIN_PASSWORD = "Tim-admin-15"; // change-le ici
       const $ = id => document.getElementById(id);
-      const day = d => d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
-      // Deux services de comptage gratuits utilisés en parallèle : si l'un tombe en panne, l'autre prend le relais.
-      const PROVIDERS = [
-        { name: "abacus", up: k => `https://abacus.jasoncameron.dev/hit/${NS}/${k}`, get: k => `https://abacus.jasoncameron.dev/get/${NS}/${k}`, val: d => d.value },
-        { name: "counterapi", up: k => `https://api.counterapi.dev/v1/${NS}/${k}/up`, get: k => `https://api.counterapi.dev/v1/${NS}/${k}/`, val: d => d.count }
-      ];
-      const timeout = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
-      // Ajoute 1 sur tous les services ; renvoie true si au moins un a répondu
-      const up = k => Promise.all(PROVIDERS.map(p => fetch(p.up(k), { signal: timeout(8000) }).then(r => r.ok).catch(() => false))).then(r => r.some(Boolean));
-      let lastErr = {};
-      // Lit une valeur : essaie chaque service (404 = pas encore de visite = 0) ; null si aucun ne répond
-      const get = async k => {
-        for (const p of PROVIDERS) {
-          try {
-            const r = await fetch(p.get(k), { signal: timeout(8000) });
-            if (r.status === 404 || r.status === 400) { lastErr[p.name] = null; return 0; }
-            if (!r.ok) { lastErr[p.name] = "erreur " + r.status; continue; }
-            const v = p.val(await r.json()); lastErr[p.name] = null;
-            return Number(v) || 0;
-          } catch (e) { lastErr[p.name] = "injoignable"; }
-        }
-        return null;
-      };
       const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 
-      // Comptage d'un visiteur (une seule fois par navigateur)
-      let seen = false;
-      try { seen = localStorage.getItem("tim_counted2") === "1"; } catch (e) {}
-      if (!seen) {
-        Promise.all([up("visiteurs"), up("jour-" + day(new Date())), up(mobile ? "mobile" : "ordinateur")]).then(r => { if (r[0]) { try { localStorage.setItem("tim_counted2", "1"); } catch (e) {} } });
+      // Comptage automatique des visites (GoatCounter ne dépose aucun cookie)
+      if (GC_CODE && !/^(localhost|127\.)/.test(location.hostname)) {
+        const sc = document.createElement("script");
+        sc.async = true; sc.src = "https://gc.zgo.at/count.js";
+        sc.dataset.goatcounter = "https://" + GC_CODE + ".goatcounter.com/count";
+        document.head.appendChild(sc);
       }
-      // Clics sur Jouer / Code, et vues du CV
+      const event = name => { try { window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: name, title: name, event: true }); } catch (e) {} };
+      // Clics sur Jouer / Code, et vues du CV (visibles dans GoatCounter, rubrique « événements »)
       document.addEventListener("click", e => {
         const a = e.target.closest(".g-actions a"); if (!a) return;
         const m = a.href.match(/(?:github\.io|github\.com\/Timothee911)\/([^\/]+)/i);
-        if (m) up((a.classList.contains("btn-play") ? "jouer-" : "code-") + m[1].toLowerCase());
+        if (m) event((a.classList.contains("btn-play") ? "jouer-" : "code-") + m[1].toLowerCase());
       });
-      document.querySelectorAll('[data-page="cv"],[data-go="cv"]').forEach(b => b.addEventListener("click", () => up("vues-cv")));
+      document.querySelectorAll('[data-page="cv"],[data-go="cv"]').forEach(b => b.addEventListener("click", () => event("vues-cv")));
 
       // Page admin
       const open = () => { show("admin"); $("a-pw").focus(); };
@@ -603,7 +583,6 @@
       let clicks = 0, timer;
       $("secret").addEventListener("click", () => { clearTimeout(timer); timer = setTimeout(() => clicks = 0, 1500); if (++clicks >= 5) { clicks = 0; open(); } });
       if (location.hash === "#admin") open();
-      // Si on change juste la fin de l'adresse (#admin) sans recharger la page, on ouvre aussi l'admin
       addEventListener("hashchange", () => { if (location.hash === "#admin") open(); });
       $("a-back").onclick = leave; $("a-quit").onclick = leave;
       const login = () => {
@@ -616,31 +595,21 @@
       const card = (n, l) => `<div class="a-card"><div class="n">${n ?? "—"}</div><div class="l">${l}</div></div>`;
       const fmtDate = s => s ? new Date(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "—";
       async function load() {
-        $("a-kpi").innerHTML = card("…", "Chargement"); 
-        const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d; });
-        lastErr = {};
-        const [total, mob, pc, cv, ...dayN] = await Promise.all([get("visiteurs"), get("mobile"), get("ordinateur"), get("vues-cv"), ...days.map(d => get("jour-" + day(d)))]);
-        const down = total === null;
-        $("a-status").innerHTML = down ? "🔴 Compteur injoignable (" + PROVIDERS.map(p => p.name + " : " + (lastErr[p.name] || "ok")).join(", ") + "). Vérifie ta connexion ou un bloqueur de pub, puis actualise."
-          : "🟢 Compteur connecté" + (PROVIDERS.some(p => lastErr[p.name]) ? " (un service de secours est en panne)" : "");
-        const week = down ? null : dayN.reduce((a, b) => a + (b || 0), 0);
-        const today = dayN[6];
-        const rows = await Promise.all(jeux.map(async j => {
-          const [pl, co, gh] = await Promise.all([get("jouer-" + j.lien.toLowerCase()), get("code-" + j.lien.toLowerCase()),
-            fetch("https://api.github.com/repos/Timothee911/" + j.lien).then(r => r.ok ? r.json() : null).catch(() => null)]);
-          return { j, pl, co, gh };
-        }));
-        const plays = down ? null : rows.reduce((a, r) => a + (r.pl || 0), 0);
-        const best = rows.slice().sort((a, b) => (b.pl || 0) - (a.pl || 0))[0];
-        const pct = total ? Math.round(100 * (mob || 0) / total) : 0;
-        $("a-kpi").innerHTML = card(total, "Visiteurs au total") + card(today, "Aujourd'hui") + card(week, "7 derniers jours")
-          + card(plays, "Clics « Jouer »") + card(cv, "Vues de l'onglet CV") + card(pct + " %", "Sur téléphone (" + (mob ?? 0) + " mobile / " + (pc ?? 0) + " ordi)")
-          + card(plays && best ? best.j.emoji + " " + best.j.nom.split(" ")[0] : "—", "Jeu le plus lancé") + card(jeux.length, "Jeux publiés");
-        const max = Math.max(1, ...dayN.map(v => v || 0));
-        $("a-days").innerHTML = days.map((d, i) => `<div><span>${dayN[i] ?? 0}</span><i style="height:${Math.round(100 * (dayN[i] || 0) / max)}%"></i>${d.toLocaleDateString("fr-FR", { weekday: "short" })}</div>`).join("");
-        $("a-games").innerHTML = "<tr><th>Jeu</th><th>Jouer</th><th>Code</th><th>⭐ Étoiles</th><th>Dernière mise à jour</th><th>Langage</th></tr>"
-          + rows.map(r => `<tr><td>${r.j.emoji} ${r.j.nom}</td><td>${r.pl ?? "—"}</td><td>${r.co ?? "—"}</td><td>${r.gh ? r.gh.stargazers_count : "—"}</td><td>${r.gh ? fmtDate(r.gh.pushed_at) : "—"}</td><td>${r.gh ? (r.gh.language || "—") : "—"}</td></tr>`).join("");
-        $("a-me").innerHTML = card(mobile ? "📱 Téléphone" : "💻 Ordinateur", "Appareil") + card(screen.width + "×" + screen.height, "Écran") + card(navigator.language, "Langue") + card(new Date().toLocaleString("fr-FR"), "Heure de la dernière actualisation");
+        const dash = GC_CODE ? "https://" + GC_CODE + ".goatcounter.com" : "";
+        $("a-status").innerHTML = GC_CODE ? "🟢 GoatCounter actif" : "🟠 GoatCounter pas encore configuré";
+        let total = null;
+        if (GC_CODE) {
+          try { const r = await fetch(dash + "/counter/TOTAL.json"); if (r.ok) total = (await r.json()).count; } catch (e) {}
+        }
+        const gh = await Promise.all(jeux.map(j => fetch("https://api.github.com/repos/Timothee911/" + j.lien).then(r => r.ok ? r.json() : null).catch(() => null)));
+        $("a-kpi").innerHTML = (GC_CODE
+          ? card(total, "Pages vues au total") + `<a class="a-card" href="${dash}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><div class="n">📊</div><div class="l">Ouvrir mes statistiques détaillées (pays, appareils, navigateurs, sources, clics « Jouer »)</div></a>`
+          : `<div class="a-card" style="grid-column:1/-1"><div class="l" style="color:#fff;font-size:1rem">Pour voir tes visiteurs : crée un compte gratuit sur <b>goatcounter.com</b> (choisis un code, par ex. <b>tim-dev</b>), puis donne ce code à Claude, ou écris-le à la ligne <code>GC_CODE</code> dans <code>index.html</code>.</div></div>`)
+          + card(jeux.length, "Jeux publiés") + card(gh.reduce((a, g) => a + (g ? g.stargazers_count : 0), 0), "⭐ Étoiles GitHub au total");
+        $("a-days").parentElement.style.display = "none";
+        $("a-games").innerHTML = "<tr><th>Jeu</th><th>⭐ Étoiles</th><th>Dernière mise à jour</th><th>Langage</th><th>Taille</th></tr>"
+          + jeux.map((j, i) => { const g = gh[i]; return `<tr><td>${j.emoji} ${j.nom}</td><td>${g ? g.stargazers_count : "—"}</td><td>${g ? fmtDate(g.pushed_at) : "—"}</td><td>${g ? (g.language || "—") : "—"}</td><td>${g ? Math.round(g.size / 1024) + " Mo" : "—"}</td></tr>`; }).join("");
+        $("a-me").innerHTML = card(mobile ? "📱 Téléphone" : "💻 Ordinateur", "Appareil") + card(screen.width + "×" + screen.height, "Écran") + card(navigator.language, "Langue") + card(new Date().toLocaleString("fr-FR"), "Dernière actualisation");
       }
     })();
   </script>
