@@ -557,7 +557,19 @@
     (function () {
       // Code GoatCounter : ton compte gratuit sur goatcounter.com (l'adresse est CODE.goatcounter.com)
       const GC_CODE = "";
-      const ADMIN_PASSWORD = "Tim-admin-15"; // change-le ici
+      // Le mot de passe n'est PAS écrit dans le code : seule son empreinte (PBKDF2-SHA256, 250 000 tours, sel aléatoire) y figure.
+      const PW_SALT = "e529eff15e352ed50fb7f4186987da28";
+      const PW_HASH = "8c55d2d6a854ba262252c20a12ecb3077a390b0463bdceb1508593cabd80af4a";
+      const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+      async function checkPassword(pw) {
+        const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+        const salt = new Uint8Array(PW_SALT.match(/../g).map(h => parseInt(h, 16)));
+        const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" }, key, 256);
+        return hex(bits) === PW_HASH;
+      }
+      // Anti-devinette : après 5 essais ratés, blocage de plus en plus long
+      const lockInfo = () => { try { return JSON.parse(localStorage.getItem("tim_lock") || "{}"); } catch (e) { return {}; } };
+      const saveLock = o => { try { localStorage.setItem("tim_lock", JSON.stringify(o)); } catch (e) {} };
       const $ = id => document.getElementById(id);
       const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 
@@ -585,8 +597,21 @@
       if (location.hash === "#admin") open();
       addEventListener("hashchange", () => { if (location.hash === "#admin") open(); });
       $("a-back").onclick = leave; $("a-quit").onclick = leave;
-      const login = () => {
-        if ($("a-pw").value !== ADMIN_PASSWORD) { $("a-pw").value = ""; $("a-pw").placeholder = "Mauvais mot de passe"; return; }
+      let busy = false;
+      const login = async () => {
+        if (busy) return;
+        const lk = lockInfo(), now = Date.now();
+        if (lk.until && now < lk.until) { $("a-pw").value = ""; $("a-pw").placeholder = "Trop d'essais : attends " + Math.ceil((lk.until - now) / 1000) + " s"; return; }
+        busy = true; $("a-pw").placeholder = "Vérification…";
+        let ok = false;
+        try { ok = !!(crypto.subtle && await checkPassword($("a-pw").value)); } catch (e) { ok = false; }
+        busy = false;
+        if (!ok) {
+          const n = (lk.n || 0) + 1, wait = n >= 5 ? Math.min(3600, 30 * Math.pow(2, n - 5)) : 0;
+          saveLock({ n, until: wait ? Date.now() + wait * 1000 : 0 });
+          $("a-pw").value = ""; $("a-pw").placeholder = wait ? "Bloqué " + wait + " s" : "Mauvais mot de passe"; return;
+        }
+        saveLock({}); $("a-pw").value = "";
         $("a-login").style.display = "none"; $("a-dash").style.display = ""; load();
       };
       $("a-ok").onclick = login; $("a-pw").onkeydown = e => { if (e.key === "Enter") login(); };
