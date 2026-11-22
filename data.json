@@ -59,6 +59,21 @@
       "texte": "Un casino spatial avec des crédits virtuels (aucun vrai argent !). 5 jeux : Crash, Mines, Canyon (pilote avec les flèches), Pile ou face et Dés. Gagne des crédits et dépense-les dans la boutique : thèmes, badges et Boost VIP.",
       "visible": true,
       "nouveau": false
+    },
+    {
+      "nom": "Échecs à trois dimensions",
+      "emoji": "♟️",
+      "image": "img/echecs-3d.jpg",
+      "glow": "40, 190, 200",
+      "lien": "echecs-a-trois-dimensions",
+      "tags": [
+        "3D",
+        "Échecs",
+        "Multijoueur"
+      ],
+      "texte": "Les échecs en 3D : cinq plateaux 5×5 superposés (niveaux A à E, 125 cases) et une pièce en plus, la licorne, qui se déplace en diagonale à travers les trois axes ! Joue les Blancs contre un bot (3 niveaux), à deux sur le même écran ou en ligne avec un ami grâce à un simple lien. Ton ELO monte comme aux échecs classiques, et il y a des puzzles du jour.",
+      "visible": true,
+      "nouveau": true
     }
   ],
   "banner": {
