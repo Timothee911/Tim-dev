@@ -256,12 +256,18 @@
     .a-msg { margin: 10px 0; font-size: .9rem; min-height: 1.2em; }
     .a-thumb { width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
     .a-log { list-style: none; padding: 0; display: grid; gap: 8px; } .a-log li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: .9rem; } .a-log small { color: var(--muted); display: block; }
+    body.is-decoy > *:not(#decoy) { display: none !important; }
+    body.is-decoy { background: #000; }
+    #decoy { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; align-items: center; justify-content: center; }
+    #decoy[hidden] { display: none; }
+    #decoy img { max-width: 100%; max-height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
   <canvas id="bg"></canvas>
   <div class="vignette"></div>
 
+  <div id="decoy" hidden><img src="img/gorille.jpg" alt=""></div>
   <div id="banner" hidden></div>
   <div id="maint" hidden><div class="mbox"><div style="font-size:3rem">🛠️</div><h2>Site en maintenance</h2><p id="maint-text"></p></div></div>
   <header>
@@ -601,6 +607,15 @@
     }
     addEventListener("resize", resize); resize();
     if (!calm) frame();
+
+    // ----- Adresse « #admin » : page leurre, une seule photo et rien d'autre -----
+    function checkDecoy() {
+      const on = location.hash.toLowerCase() === "#admin";
+      document.body.classList.toggle("is-decoy", on);
+      document.getElementById("decoy").hidden = !on;
+      if (on) document.title = "Admin";
+    }
+    checkDecoy(); addEventListener("hashchange", checkDecoy);
 
     // Ouvre directement le CV si l'adresse finit par #cv
     if (location.hash === "#cv") show("cv");
