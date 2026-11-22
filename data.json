@@ -1,0 +1,74 @@
+{
+  "games": [
+    {
+      "nom": "StormDrop",
+      "emoji": "🌩️",
+      "image": "img/stormdrop.jpg",
+      "glow": "255, 210, 63",
+      "lien": "StormDrop",
+      "tags": [
+        "3D",
+        "Battle royale",
+        "Solo · Duo · Escouade"
+      ],
+      "texte": "Un battle royale en 3D façon Fortnite, jouable directement dans le navigateur ! Saute sur l'île, ramasse des armes, construis, affronte les boss (Midas, Skye, Brutus…) et sois le dernier debout avant que la tempête se referme.",
+      "visible": true,
+      "nouveau": false
+    },
+    {
+      "nom": "NFS Dubai Ultimate",
+      "emoji": "🏎️",
+      "image": "img/nfs-game.jpg",
+      "glow": "255, 92, 60",
+      "lien": "nfs-game",
+      "tags": [
+        "3D",
+        "Monde ouvert",
+        "Conduite"
+      ],
+      "texte": "Un jeu de conduite 3D en monde ouvert : roule librement sur une grande carte avec des routes sinueuses, des montagnes, des lacs et un ciel après la pluie. Enchaîne drifts, hautes vitesses et frôlements du trafic pour gagner des SP, flashe les radars, utilise le nitro et suis le GPS jusqu'aux planques. Dans le garage, conduis une vraie Ferrari SF90 Spider en 3D, améliore-la (moteur, turbo, pneus), change sa peinture et remplis les objectifs des Speedlistes.",
+      "visible": true,
+      "nouveau": false
+    },
+    {
+      "nom": "Survival Battle",
+      "emoji": "🧟",
+      "image": "img/survival-battle.jpg",
+      "glow": "160, 110, 255",
+      "lien": "survival-battle",
+      "tags": [
+        "2D",
+        "Survie",
+        "Zombies & boss"
+      ],
+      "texte": "Un jeu de survie en 2D : défends ta base contre des vagues de zombies et affronte des boss ! Choisis ta classe (Éclaireur, Tank, Ingénieur), améliore ta vitesse, ta santé et tes dégâts, et utilise les roquettes pour tenir le plus de vagues possible.",
+      "visible": true,
+      "nouveau": false
+    },
+    {
+      "nom": "Galactic Casino",
+      "emoji": "🎰",
+      "image": "img/galactic-casino.jpg",
+      "glow": "61, 255, 154",
+      "lien": "galactic-casino",
+      "tags": [
+        "5 mini-jeux",
+        "Boutique",
+        "Sans vrai argent"
+      ],
+      "texte": "Un casino spatial avec des crédits virtuels (aucun vrai argent !). 5 jeux : Crash, Mines, Canyon (pilote avec les flèches), Pile ou face et Dés. Gagne des crédits et dépense-les dans la boutique : thèmes, badges et Boost VIP.",
+      "visible": true,
+      "nouveau": false
+    }
+  ],
+  "banner": {
+    "on": false,
+    "emoji": "📢",
+    "text": ""
+  },
+  "maintenance": {
+    "on": false,
+    "text": ""
+  },
+  "gc": ""
+}
