@@ -611,7 +611,7 @@
     if (!calm) frame();
 
     // ----- Page leurre : un lien secret + un code, puis une seule photo et rien d'autre -----
-    const DECOY_LINK = "fc03eb3292cb70245d16a94a66ec749f0ae5f71d88e2f9eab18dbfb8d0c38128", DECOY_CODE = "adccc63077d7278a4f48e28148ab19022c60fc660d0db29f011fd3f23ac5901c";
+    const DECOY_LINK = "f2102b5693e0faf69c98e1882fc5ed68cd2ae61b8e4be3ad4a6b48fbab79d8f0", DECOY_CODE = "adccc63077d7278a4f48e28148ab19022c60fc660d0db29f011fd3f23ac5901c";
     const sha256 = async t => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))].map(x => x.toString(16).padStart(2, "0")).join("");
     async function checkDecoy() {
       const h = location.hash.slice(1);
