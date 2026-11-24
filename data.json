@@ -73,7 +73,7 @@
       ],
       "texte": "Les échecs en 3D : cinq plateaux 5×5 superposés (niveaux A à E, 125 cases) et une pièce en plus, la licorne, qui se déplace en diagonale à travers les trois axes ! Joue les Blancs contre un bot (3 niveaux), à deux sur le même écran ou en ligne avec un ami grâce à un simple lien. Ton ELO monte comme aux échecs classiques, et il y a des puzzles du jour.",
       "visible": true,
-      "nouveau": true
+      "nouveau": false
     }
   ],
   "banner": {
